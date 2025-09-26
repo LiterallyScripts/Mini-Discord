@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.12
+Version: 1.13
 """
 
-__version__ = "1.12"
+__version__ = "1.13"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
