@@ -1,6 +1,8 @@
 @echo off
 setlocal enabledelayedexpansion
 
+title Mini Discord
+
 set "GITHUB_RAW_URL=https://raw.githubusercontent.com/LiterallyScripts/Mini-Discord/refs/heads/main/discord_chat.py"
 set "LOCAL_FILE=discord_chat.py"
 set "BACKUP_FILE=discord_chat_backup.py"
@@ -155,3 +157,4 @@ if !v1_patch! GTR !v2_patch! (
 )
 set "version_result=0"
 goto :eof
+
