@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.10
+Version: 1.11
 """
 
-__version__ = "1.10"
+__version__ = "1.11"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -13,10 +13,88 @@ import json
 import threading
 import time
 import queue
+import sys
 
 CACHE_DIR = "cache"
 TOKEN_FILE = os.path.join(CACHE_DIR, "token.txt")
 TOKENS_FILE = os.path.join(CACHE_DIR, "tokens.txt")
+
+def show_loading_animation():
+    """Display a rotating Discord logo loading animation"""
+    discord_logo = [
+        "    ████████    ",
+        "  ██        ██  ",
+        " ██  ██  ██  ██ ",
+        "██   ██  ██   ██",
+        "██            ██",
+        "██   ██████   ██",
+        " ██  ██  ██  ██ ",
+        "  ██        ██  ",
+        "    ████████    "
+    ]
+    
+    rotation_frames = [
+        discord_logo,
+        [
+            "  ████████    ",
+            " ██      ██   ",
+            "██  ████  ██  ",
+            "█   ████   ██ ",
+            "█          ██ ",
+            "█   ████   ██ ",
+            "██  ████  ██  ",
+            " ██      ██   ",
+            "  ████████    "
+        ],
+        [
+            "    ████████  ",
+            "  ██        ██",
+            " ██  ██  ██  █",
+            "██   ██  ██   ",
+            "██            ",
+            "██   ██████   ",
+            " ██  ██  ██  █",
+            "  ██        ██",
+            "    ████████  "
+        ],
+        [
+            "  ████████    ",
+            " ██      ██   ",
+            "██  ████  ██  ",
+            "█   ████   ██ ",
+            "█          ██ ",
+            "█   ████   ██ ",
+            "██  ████  ██  ",
+            " ██      ██   ",
+            "  ████████    "
+        ]
+    ]
+    
+    colors = ["\033[36m", "\033[35m", "\033[34m", "\033[33m"]
+    reset = "\033[0m"
+    
+    clear_screen()
+    print("\n" * 5)
+    print(" " * 20 + "Discord Chat Script")
+    print(" " * 25 + "Loading...")
+    print()
+    
+    for i in range(20): 
+        frame = rotation_frames[i % len(rotation_frames)]
+        color = colors[i % len(colors)]
+        
+        if i > 0:
+            print("\033[11A", end="")
+        
+        for line in frame:
+            print(" " * 25 + color + line + reset)
+        
+        time.sleep(0.1)
+    
+    print("\n" * 2)
+    print(" " * 22 + "Initializing Discord...")
+    time.sleep(0.5)
+    clear_screen()
 
 def fetch_username(token):
     headers = {
@@ -360,5 +438,5 @@ def main():
                     print("Unknown command.")
 
 if __name__ == "__main__":
-
+    show_loading_animation()
     main()
