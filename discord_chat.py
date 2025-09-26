@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.0.1
+Version: 1.0.2
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -319,7 +319,7 @@ def main():
             last_refresh = time.time()
             
             while True:
-                print("\nType 'page N', 'send' to send messages, 'back' to change channel, or 'exit' to quit.")
+                print("\nType 'page N', 'send' to send messages, 'back' to change channel.")
                 start = time.time()
                 cmd = None
                 
@@ -369,4 +369,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
