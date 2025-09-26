@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.15
+Version: 1.16
 """
 
-__version__ = "1.15"
+__version__ = "1.16"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -373,6 +373,8 @@ def display_page(token, channel_id, page, self_id, username, status):
             is_self = self_id and msg["author"]["id"] == self_id
             color = YELLOW if is_self else (WHITE if idx % 2 == 0 else GREY)
             print(f"{color}{author}:{RESET} {content}")
+    # Always print commands after messages for clarity
+    print(f"\n{BOLD}Commands:{RESET} {CYAN}page N{RESET}, {CYAN}send{RESET}, {CYAN}back{RESET}, {CYAN}help{RESET}, {CYAN}quit{RESET}")
     return messages
 
 def get_self_id(token):
@@ -388,35 +390,45 @@ def get_self_id(token):
         pass
     return None
 
-def send_mode(token, channel_id, page, self_id, username, status):
-    while True:
-        content = input(f"{BOLD}Enter message (type 'exit' to stop, 'back' to change channel):{RESET} ")
-        if content.lower() in ("exit", "back"):
-            return content.lower()
-        if not content.strip():
-            print(f"{YELLOW}Cannot send empty message.{RESET}")
-            continue
-        send_message(token, channel_id, content)
-        display_page(token, channel_id, page, self_id, username, status)
+def send_mode(token, channel_id, page, self_id, username, status, refresh_control):
+    refresh_control["sending"] = True  # Notify refresher to pause
+    try:
+        while True:
+            content = input(f"{BOLD}Enter message (type 'exit' to stop, 'back' to change channel):{RESET} ")
+            if content.lower() in ("exit", "back"):
+                return content.lower()
+            if not content.strip():
+                print(f"{YELLOW}Cannot send empty message.{RESET}")
+                continue
+            send_message(token, channel_id, content)
+            display_page(token, channel_id, page, self_id, username, status)
+    finally:
+        refresh_control["sending"] = False  # Allow refresh again
 
 def chat_loop(token, channel_id, can_send, self_id, username, status):
     page = 1
     stop_event = threading.Event()
+    refresh_control = {"sending": False}
 
     def refresh_messages():
         while not stop_event.is_set():
-            display_page(token, channel_id, page, self_id, username, status)
-            for _ in range(10):
-                if stop_event.is_set():
-                    break
-                time.sleep(1)
+            if not refresh_control["sending"]:
+                display_page(token, channel_id, page, self_id, username, status)
+                for _ in range(10):
+                    if stop_event.is_set() or refresh_control["sending"]:
+                        break
+                    time.sleep(1)
+            else:
+                # Wait while send mode is active, polling every 0.2s
+                while refresh_control["sending"] and not stop_event.is_set():
+                    time.sleep(0.2)
 
     refresh_thread = threading.Thread(target=refresh_messages, daemon=True)
     refresh_thread.start()
 
     try:
         while True:
-            print(f"\n{BOLD}Commands:{RESET} {CYAN}page N{RESET}, {CYAN}send{RESET}, {CYAN}back{RESET}, {CYAN}help{RESET}, {CYAN}quit{RESET}")
+            # Only print prompt if not in send mode, otherwise handled by send_mode
             cmd = input(f"{BOLD}> {RESET}").strip()
             if cmd.lower() == "quit":
                 print(f"{RED}Goodbye!{RESET}")
@@ -437,7 +449,7 @@ def chat_loop(token, channel_id, can_send, self_id, username, status):
                 if not can_send:
                     print(f"{YELLOW}You cannot send messages in this channel.{RESET}")
                     continue
-                result = send_mode(token, channel_id, page, self_id, username, status)
+                result = send_mode(token, channel_id, page, self_id, username, status, refresh_control)
                 if result == "back":
                     stop_event.set()
                     refresh_thread.join()
