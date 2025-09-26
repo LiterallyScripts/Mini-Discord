@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.11
+Version: 1.12
 """
 
-__version__ = "1.11"
+__version__ = "1.12"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -20,77 +20,17 @@ TOKEN_FILE = os.path.join(CACHE_DIR, "token.txt")
 TOKENS_FILE = os.path.join(CACHE_DIR, "tokens.txt")
 
 def show_loading_animation():
-    """Display a rotating Discord logo loading animation"""
-    discord_logo = [
-        "    ████████    ",
-        "  ██        ██  ",
-        " ██  ██  ██  ██ ",
-        "██   ██  ██   ██",
-        "██            ██",
-        "██   ██████   ██",
-        " ██  ██  ██  ██ ",
-        "  ██        ██  ",
-        "    ████████    "
-    ]
-    
-    rotation_frames = [
-        discord_logo,
-        [
-            "  ████████    ",
-            " ██      ██   ",
-            "██  ████  ██  ",
-            "█   ████   ██ ",
-            "█          ██ ",
-            "█   ████   ██ ",
-            "██  ████  ██  ",
-            " ██      ██   ",
-            "  ████████    "
-        ],
-        [
-            "    ████████  ",
-            "  ██        ██",
-            " ██  ██  ██  █",
-            "██   ██  ██   ",
-            "██            ",
-            "██   ██████   ",
-            " ██  ██  ██  █",
-            "  ██        ██",
-            "    ████████  "
-        ],
-        [
-            "  ████████    ",
-            " ██      ██   ",
-            "██  ████  ██  ",
-            "█   ████   ██ ",
-            "█          ██ ",
-            "█   ████   ██ ",
-            "██  ████  ██  ",
-            " ██      ██   ",
-            "  ████████    "
-        ]
-    ]
-    
-    colors = ["\033[36m", "\033[35m", "\033[34m", "\033[33m"]
-    reset = "\033[0m"
-    
+    """Display a simple rotating box loading animation"""
+    frames = ["/", "|", "\\", "-"]
     clear_screen()
     print("\n" * 5)
     print(" " * 20 + "Discord Chat Script")
     print(" " * 25 + "Loading...")
     print()
-    
-    for i in range(20): 
-        frame = rotation_frames[i % len(rotation_frames)]
-        color = colors[i % len(colors)]
-        
-        if i > 0:
-            print("\033[11A", end="")
-        
-        for line in frame:
-            print(" " * 25 + color + line + reset)
-        
+    for i in range(20):
+        frame = frames[i % len(frames)]
+        print(" " * 30 + frame, end="\r")
         time.sleep(0.1)
-    
     print("\n" * 2)
     print(" " * 22 + "Initializing Discord...")
     time.sleep(0.5)
@@ -166,6 +106,14 @@ def select_token():
 def get_token():
     return select_token()
 
+def print_account_status(username, status):
+    GREEN = "\033[32m"
+    BLUE = "\033[34m"
+    RED = "\033[31m"
+    RESET = "\033[0m"
+    print(f"{GREEN}Account: {username}{RESET} | {BLUE}Status: {status}{RESET}")
+    print(f"{RED}Version: {__version__}{RESET}")
+
 def get_guild(token, username, status):
     while True:
         clear_screen()
@@ -180,15 +128,23 @@ def get_guild(token, username, status):
             exit(1)
         guilds = resp.json()
         print("\n=== Your Servers ===")
+        WHITE = "\033[97m"
+        GREY = "\033[90m"
+        RESET = "\033[0m"
+        print(f"{WHITE}0: Direct Messages{RESET}")
         for idx, guild in enumerate(guilds, 1):
-            print(f"{idx}: {guild['name']}")
+            color = WHITE if idx % 2 == 1 else GREY
+            print(f"{color}{idx}: {guild['name']}{RESET}")
+        if len(guilds) < 10:
+            color = WHITE if (len(guilds)+1) % 2 == 1 else GREY
+            print(f"{color}{len(guilds)+1}: Add new account{RESET}")
         sel = input("Select a server by number (or type 'refresh', 'back', 'status'): ").strip()
         if sel.lower() == "refresh":
             continue
         if sel.lower() == "back":
             return "back_account"
         if sel.lower() == "status":
-            new_status = input("Enter new status (online, dnd, idle, invisible): ").strip().lower()
+            new_status = input("Enter new status (online, dnd, idle, invisible): ")
             if new_status in ("online", "dnd", "idle", "invisible", "offline"):
                 if new_status == "offline":
                     new_status = "invisible"
@@ -200,11 +156,73 @@ def get_guild(token, username, status):
             continue
         try:
             sel = int(sel)
-            if 1 <= sel <= len(guilds):
+            if sel == 0:
+                dm_channel = get_dm_channel(token, username, status)
+                if dm_channel == "back_dm":
+                    continue
+                return dm_channel
+            elif 1 <= sel <= len(guilds):
                 return guilds[sel-1]
         except:
             pass
         print("Invalid selection.")
+
+def get_dm_channel(token, username, status):
+    page = 0
+    while True:
+        clear_screen()
+        print_account_status(username, status)
+        headers = {
+            "Authorization": token,
+            "User-Agent": "Mozilla/5.0"
+        }
+        resp = requests.get("https://discord.com/api/v9/users/@me/channels", headers=headers)
+        if resp.status_code != 200:
+            print("Failed to fetch DMs:", resp.text)
+            time.sleep(2)
+            return "back_dm"
+        dms = [ch for ch in resp.json() if ch["type"] == 1 or ch["type"] == 3] 
+        dms_sorted = sorted(dms, key=lambda c: c.get("last_message_id", "0"), reverse=True)
+        per_page = 10
+        total_pages = (len(dms_sorted) + per_page - 1) // per_page
+        start = page * per_page
+        end = start + per_page
+        print("\n=== Direct Messages (Page {}/{}) ===".format(page+1, max(total_pages,1)))
+        WHITE = "\033[97m"
+        GREY = "\033[90m"
+        RESET = "\033[0m"
+        for idx, ch in enumerate(dms_sorted[start:end], 1):
+            color = WHITE if idx % 2 == 1 else GREY
+            if ch["type"] == 1:
+                name = ch["recipients"][0]["username"]
+            elif ch["type"] == 3:
+                name = ch.get("name") or ", ".join([u["username"] for u in ch["recipients"]])
+            else:
+                name = "Unknown"
+            print(f"{color}{idx}: {name}{RESET}")
+        print(f"{WHITE}b: Back to server list{RESET}")
+        if total_pages > 1:
+            if page > 0:
+                print(f"{WHITE}p: Previous page{RESET}")
+            if page < total_pages - 1:
+                print(f"{WHITE}n: Next page{RESET}")
+        sel = input("Select a DM by number (or 'b' to go back): ").strip().lower()
+        if sel == "b":
+            return "back_dm"
+        if sel == "p" and page > 0:
+            page -= 1
+            continue
+        if sel == "n" and page < total_pages - 1:
+            page += 1
+            continue
+        try:
+            sel = int(sel)
+            if 1 <= sel <= min(per_page, len(dms_sorted) - start):
+                return dms_sorted[start + sel - 1]
+        except:
+            pass
+        print("Invalid selection.")
+        time.sleep(1)
 
 def get_channel(token, guild_id, username, status):
     while True:
@@ -232,11 +250,15 @@ def get_channel(token, guild_id, username, status):
             print("No text channels found.")
             exit(1)
         print("\n=== Channels ===")
+        WHITE = "\033[97m"
+        GREY = "\033[90m"
+        RESET = "\033[0m"
         for idx, (ch, can_send) in enumerate(text_channels, 1):
+            color = WHITE if idx % 2 == 1 else GREY
             extra = ""
             if not can_send:
                 extra += " (cannot send here)"
-            print(f"{idx}: {ch['name']}{extra}")
+            print(f"{color}{idx}: {ch['name']}{extra}{RESET}")
         sel = input("Select a channel by number (or type 'refresh', 'back'): ").strip()
         if sel.lower() == "refresh":
             continue
@@ -255,6 +277,8 @@ def get_channel_id(token, username, status):
     guild = get_guild(token, username, status)
     if guild == "back_account":
         return "back_account", None
+    if "type" in guild and (guild["type"] == 1 or guild["type"] == 3):
+        return guild["id"], True
     channel, can_send = get_channel(token, guild["id"], username, status)
     if channel == "back_guild":
         return "back_guild", None
@@ -309,8 +333,10 @@ def clear_screen():
 def print_account_status(username, status):
     GREEN = "\033[32m"
     BLUE = "\033[34m"
+    RED = "\033[31m"
     RESET = "\033[0m"
     print(f"{GREEN}Account: {username}{RESET} | {BLUE}Status: {status}{RESET}")
+    print(f"{RED}Version: {__version__}{RESET}")
 
 def display_page(token, channel_id, page, self_id, username, status):
     clear_screen()
