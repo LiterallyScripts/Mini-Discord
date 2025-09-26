@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.0.5
+Version: 1.0.6
 """
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -17,7 +17,6 @@ import queue
 CACHE_DIR = "cache"
 TOKEN_FILE = os.path.join(CACHE_DIR, "token.txt")
 TOKENS_FILE = os.path.join(CACHE_DIR, "tokens.txt")
-LOG_FILE = os.path.join(CACHE_DIR, "Mainmessage.txt")
 
 def fetch_username(token):
     headers = {
@@ -211,12 +210,7 @@ def fetch_messages(token, channel_id, page=1, limit=20):
         last_message_id = batch[-1]["id"]
     return messages
 
-def log_messages(messages):
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        for msg in messages:
-            author = msg["author"]["username"]
-            content = msg["content"]
-            f.write(f"{author}: {content}\n")
+
 
 def send_message(token, channel_id, content):
     headers = {
@@ -262,7 +256,6 @@ def display_page(token, channel_id, page, self_id, username, status):
             else:
                 color = WHITE if idx % 2 == 0 else GREY
             print(f"{color}{author}: {content}{RESET}")
-        log_messages(messages)
     return messages
 
 def get_self_id(token):
@@ -369,8 +362,3 @@ def main():
 if __name__ == "__main__":
 
     main()
-
-
-
-
-
