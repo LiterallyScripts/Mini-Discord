@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.0.0
+Version: 1.0.1
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -369,3 +369,4 @@ def main():
 if __name__ == "__main__":
 
     main()
+
