@@ -1,11 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: ----- CONFIGURATION -----
+set "PYTHON_URL=https://www.python.org/ftp/python/3.11.5/python-3.11.5-amd64.exe"
+set "PYTHON_INSTALLER=python-installer.exe"
+set "PYTHON_PATH=%USERPROFILE%\AppData\Local\Programs\Python\Python311\python.exe"
 set "GITHUB_RAW_URL=https://raw.githubusercontent.com/LiterallyScripts/Mini-Discord/refs/heads/main/discord_chat.py"
 set "LOCAL_FILE=discord_chat.py"
 set "BACKUP_FILE=discord_chat_backup.py"
 set "TEMP_FILE=temp_download.py"
 
+:: ----- CHECK FOR CURL -----
 curl --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo ERROR: curl not available
@@ -13,11 +18,35 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: ----- CHECK FOR PYTHON -----
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Python not available
-    pause
-    exit /b 1
+    echo Python not found. Downloading and installing Python...
+    curl -L -o "%PYTHON_INSTALLER%" "%PYTHON_URL%"
+    if not exist "%PYTHON_INSTALLER%" (
+        echo Failed to download Python installer.
+        pause
+        exit /b 1
+    )
+    "%PYTHON_INSTALLER%" /quiet InstallAllUsers=0 PrependPath=1
+    if exist "%PYTHON_INSTALLER%" del "%PYTHON_INSTALLER%"
+    set "PATH=%PATH%;%USERPROFILE%\AppData\Local\Programs\Python\Python311\Scripts;%USERPROFILE%\AppData\Local\Programs\Python\Python311\"
+    "%PYTHON_PATH%" --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo Python installation failed.
+        pause
+        exit /b 1
+    )
+)
+
+:: *Ensure pip is available (Python 3.4+ comes with pip, but just in case)*
+python -m ensurepip --upgrade >nul 2>&1
+
+:: ----- INSTALL DEPENDENCIES IF requirements.txt EXISTS -----
+if exist requirements.txt (
+    echo Installing dependencies from requirements.txt ...
+    python -m pip install --upgrade pip
+    python -m pip install -r requirements.txt
 )
 
 echo Checking for updates...
