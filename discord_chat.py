@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.0.3
+Version: 1.0.4
 """
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -57,7 +57,7 @@ def select_token():
             users.append(("Invalid token", "", token))
     while True:
         clear_screen()
-        print("\n==== Discord Accounts ====")
+        print("\n==== Discord Accounts! ====")
         for idx, (username, user_id, _) in enumerate(users, 1):
             print(f"{idx}: {username}")
         if len(users) < 10:
@@ -369,6 +369,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
