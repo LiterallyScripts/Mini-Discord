@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.13
+Version: 1.14
 """
 
-__version__ = "1.13"
+__version__ = "1.14"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -19,20 +19,29 @@ CACHE_DIR = "cache"
 TOKEN_FILE = os.path.join(CACHE_DIR, "token.txt")
 TOKENS_FILE = os.path.join(CACHE_DIR, "tokens.txt")
 
+RESET = "\033[0m"
+BOLD = "\033[1m"
+GREEN = "\033[32m"
+BLUE = "\033[34m"
+RED = "\033[31m"
+WHITE = "\033[97m"
+GREY = "\033[90m"
+YELLOW = "\033[33m"
+CYAN = "\033[36m"
+
 def show_loading_animation():
-    """Display a simple rotating box loading animation"""
     frames = ["/", "|", "\\", "-"]
     clear_screen()
     print("\n" * 5)
-    print(" " * 20 + "Discord Chat Script")
-    print(" " * 25 + "Loading...")
+    print(" " * 20 + f"{BOLD}{CYAN}Discord Chat Script{RESET}")
+    print(" " * 25 + f"{YELLOW}Loading...{RESET}")
     print()
     for i in range(20):
         frame = frames[i % len(frames)]
-        print(" " * 30 + frame, end="\r")
-        time.sleep(0.1)
+        print(" " * 30 + f"{CYAN}{frame}{RESET}", end="\r")
+        time.sleep(0.08)
     print("\n" * 2)
-    print(" " * 22 + "Initializing Discord...")
+    print(" " * 22 + f"{GREEN}Initializing Discord...{RESET}")
     time.sleep(0.5)
     clear_screen()
 
@@ -41,10 +50,13 @@ def fetch_username(token):
         "Authorization": token,
         "User-Agent": "Mozilla/5.0"
     }
-    resp = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
-    if resp.status_code == 200:
-        user = resp.json()
-        return user.get("username", "Unknown"), user.get("id", "")
+    try:
+        resp = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
+        if resp.status_code == 200:
+            user = resp.json()
+            return user.get("username", "Unknown"), user.get("id", "")
+    except Exception:
+        pass
     return None, None
 
 def fetch_status(token):
@@ -52,11 +64,13 @@ def fetch_status(token):
         "Authorization": token,
         "User-Agent": "Mozilla/5.0"
     }
-    resp = requests.get("https://discord.com/api/v9/users/@me/settings", headers=headers)
-    if resp.status_code == 200:
-        data = resp.json()
-        status = data.get("status", "unknown")
-        return status
+    try:
+        resp = requests.get("https://discord.com/api/v9/users/@me/settings", headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get("status", "unknown")
+    except Exception:
+        pass
     return "unknown"
 
 def select_token():
@@ -74,17 +88,22 @@ def select_token():
             users.append(("Invalid token", "", token))
     while True:
         clear_screen()
-        print("\n==== Discord Accounts ====")
+        print(f"{BOLD}{CYAN}==== Discord Accounts ===={RESET}\n")
         for idx, (username, user_id, _) in enumerate(users, 1):
-            print(f"{idx}: {username}")
+            color = GREEN if username != "Invalid token" else RED
+            print(f"{color}{idx}: {username}{RESET}")
         if len(users) < 10:
-            print(f"{len(users)+1}: Add new account")
-        sel = input("Select an account by number: ").strip()
+            print(f"{YELLOW}{len(users)+1}: Add new account{RESET}")
+        print(f"{RED}q: Quit{RESET}")
+        sel = input(f"\n{BOLD}Select an account by number:{RESET} ").strip()
+        if sel.lower() == "q":
+            sys.exit(0)
         try:
             sel = int(sel)
             if 1 <= sel <= len(users):
                 if users[sel-1][0] == "Invalid token":
-                    print("This token is invalid. Please remove or replace it.")
+                    print(f"{RED}This token is invalid. Please remove or replace it.{RESET}")
+                    input("Press Enter to continue...")
                     continue
                 return users[sel-1][2]
             elif sel == len(users)+1 and len(users) < 10:
@@ -94,25 +113,25 @@ def select_token():
                     if new_token not in tokens:
                         with open(TOKENS_FILE, "a") as f:
                             f.write(new_token + "\n")
-                    print(f"Added account: {username}")
+                    print(f"{GREEN}Added account: {username}{RESET}")
+                    input("Press Enter to continue...")
                     return new_token
                 else:
-                    print("Invalid token.")
+                    print(f"{RED}Invalid token.{RESET}")
+                    input("Press Enter to continue...")
             else:
-                print("Invalid selection.")
-        except:
-            print("Invalid selection.")
+                print(f"{RED}Invalid selection.{RESET}")
+                input("Press Enter to continue...")
+        except Exception:
+            print(f"{RED}Invalid selection.{RESET}")
+            input("Press Enter to continue...")
 
 def get_token():
     return select_token()
 
 def print_account_status(username, status):
-    GREEN = "\033[32m"
-    BLUE = "\033[34m"
-    RED = "\033[31m"
-    RESET = "\033[0m"
-    print(f"{GREEN}Account: {username}{RESET} | {BLUE}Status: {status}{RESET}")
-    print(f"{RED}Version: {__version__}{RESET}")
+    print(f"{BOLD}{GREEN}Account:{RESET} {username} | {BOLD}{BLUE}Status:{RESET} {status}")
+    print(f"{BOLD}{CYAN}Version:{RESET} {__version__}\n")
 
 def get_guild(token, username, status):
     while True:
@@ -122,38 +141,29 @@ def get_guild(token, username, status):
             "Authorization": token,
             "User-Agent": "Mozilla/5.0"
         }
-        resp = requests.get("https://discord.com/api/v9/users/@me/guilds", headers=headers)
-        if resp.status_code != 200:
-            print("Failed to fetch guilds:", resp.text)
+        try:
+            resp = requests.get("https://discord.com/api/v9/users/@me/guilds", headers=headers)
+            if resp.status_code != 200:
+                print(f"{RED}Failed to fetch guilds:{RESET}", resp.text)
+                input("Press Enter to exit...")
+                exit(1)
+            guilds = resp.json()
+        except Exception as e:
+            print(f"{RED}Error fetching guilds:{RESET} {e}")
+            input("Press Enter to exit...")
             exit(1)
-        guilds = resp.json()
-        print("\n=== Your Servers ===")
-        WHITE = "\033[97m"
-        GREY = "\033[90m"
-        RESET = "\033[0m"
+        print(f"{BOLD}{CYAN}=== Your Servers ==={RESET}")
         print(f"{WHITE}0: Direct Messages{RESET}")
         for idx, guild in enumerate(guilds, 1):
             color = WHITE if idx % 2 == 1 else GREY
             print(f"{color}{idx}: {guild['name']}{RESET}")
-        if len(guilds) < 10:
-            color = WHITE if (len(guilds)+1) % 2 == 1 else GREY
-            print(f"{color}{len(guilds)+1}: Add new account{RESET}")
-        sel = input("Select a server by number (or type 'refresh', 'back', 'status'): ").strip()
-        if sel.lower() == "refresh":
-            continue
-        if sel.lower() == "back":
+        print(f"{YELLOW}b: Back to account selection{RESET}")
+        print(f"{RED}q: Quit{RESET}")
+        sel = input(f"\n{BOLD}Select a server by number:{RESET} ").strip().lower()
+        if sel == "b":
             return "back_account"
-        if sel.lower() == "status":
-            new_status = input("Enter new status (online, dnd, idle, invisible): ")
-            if new_status in ("online", "dnd", "idle", "invisible", "offline"):
-                if new_status == "offline":
-                    new_status = "invisible"
-                if set_status(token, new_status):
-                    status = new_status
-            else:
-                print("Invalid status.")
-            time.sleep(1)
-            continue
+        if sel == "q":
+            sys.exit(0)
         try:
             sel = int(sel)
             if sel == 0:
@@ -163,9 +173,10 @@ def get_guild(token, username, status):
                 return dm_channel
             elif 1 <= sel <= len(guilds):
                 return guilds[sel-1]
-        except:
+        except Exception:
             pass
-        print("Invalid selection.")
+        print(f"{RED}Invalid selection.{RESET}")
+        input("Press Enter to continue...")
 
 def get_dm_channel(token, username, status):
     page = 0
@@ -176,21 +187,23 @@ def get_dm_channel(token, username, status):
             "Authorization": token,
             "User-Agent": "Mozilla/5.0"
         }
-        resp = requests.get("https://discord.com/api/v9/users/@me/channels", headers=headers)
-        if resp.status_code != 200:
-            print("Failed to fetch DMs:", resp.text)
+        try:
+            resp = requests.get("https://discord.com/api/v9/users/@me/channels", headers=headers)
+            if resp.status_code != 200:
+                print(f"{RED}Failed to fetch DMs:{RESET}", resp.text)
+                time.sleep(2)
+                return "back_dm"
+            dms = [ch for ch in resp.json() if ch["type"] == 1 or ch["type"] == 3]
+        except Exception as e:
+            print(f"{RED}Error fetching DMs:{RESET} {e}")
             time.sleep(2)
             return "back_dm"
-        dms = [ch for ch in resp.json() if ch["type"] == 1 or ch["type"] == 3] 
         dms_sorted = sorted(dms, key=lambda c: c.get("last_message_id", "0"), reverse=True)
         per_page = 10
         total_pages = (len(dms_sorted) + per_page - 1) // per_page
         start = page * per_page
         end = start + per_page
-        print("\n=== Direct Messages (Page {}/{}) ===".format(page+1, max(total_pages,1)))
-        WHITE = "\033[97m"
-        GREY = "\033[90m"
-        RESET = "\033[0m"
+        print(f"{BOLD}{CYAN}=== Direct Messages (Page {page+1}/{max(total_pages,1)}) ==={RESET}")
         for idx, ch in enumerate(dms_sorted[start:end], 1):
             color = WHITE if idx % 2 == 1 else GREY
             if ch["type"] == 1:
@@ -200,15 +213,18 @@ def get_dm_channel(token, username, status):
             else:
                 name = "Unknown"
             print(f"{color}{idx}: {name}{RESET}")
-        print(f"{WHITE}b: Back to server list{RESET}")
+        print(f"{YELLOW}b: Back to server list{RESET}")
         if total_pages > 1:
             if page > 0:
-                print(f"{WHITE}p: Previous page{RESET}")
+                print(f"{CYAN}p: Previous page{RESET}")
             if page < total_pages - 1:
-                print(f"{WHITE}n: Next page{RESET}")
-        sel = input("Select a DM by number (or 'b' to go back): ").strip().lower()
+                print(f"{CYAN}n: Next page{RESET}")
+        print(f"{RED}q: Quit{RESET}")
+        sel = input(f"\n{BOLD}Select a DM by number:{RESET} ").strip().lower()
         if sel == "b":
             return "back_dm"
+        if sel == "q":
+            sys.exit(0)
         if sel == "p" and page > 0:
             page -= 1
             continue
@@ -219,10 +235,10 @@ def get_dm_channel(token, username, status):
             sel = int(sel)
             if 1 <= sel <= min(per_page, len(dms_sorted) - start):
                 return dms_sorted[start + sel - 1]
-        except:
+        except Exception:
             pass
-        print("Invalid selection.")
-        time.sleep(1)
+        print(f"{RED}Invalid selection.{RESET}")
+        input("Press Enter to continue...")
 
 def get_channel(token, guild_id, username, status):
     while True:
@@ -232,11 +248,17 @@ def get_channel(token, guild_id, username, status):
             "Authorization": token,
             "User-Agent": "Mozilla/5.0"
         }
-        resp = requests.get(f"https://discord.com/api/v9/guilds/{guild_id}/channels", headers=headers)
-        if resp.status_code != 200:
-            print("Failed to fetch channels:", resp.text)
+        try:
+            resp = requests.get(f"https://discord.com/api/v9/guilds/{guild_id}/channels", headers=headers)
+            if resp.status_code != 200:
+                print(f"{RED}Failed to fetch channels:{RESET}", resp.text)
+                input("Press Enter to exit...")
+                exit(1)
+            channels = resp.json()
+        except Exception as e:
+            print(f"{RED}Error fetching channels:{RESET} {e}")
+            input("Press Enter to exit...")
             exit(1)
-        channels = resp.json()
         text_channels = []
         for ch in channels:
             if ch["type"] in [0, 5, 10, 11, 12, 15]:
@@ -247,31 +269,32 @@ def get_channel(token, guild_id, username, status):
                     can_send = (perms_int & 0x800) != 0
                 text_channels.append((ch, can_send))
         if not text_channels:
-            print("No text channels found.")
+            print(f"{RED}No text channels found.{RESET}")
+            input("Press Enter to exit...")
             exit(1)
-        print("\n=== Channels ===")
-        WHITE = "\033[97m"
-        GREY = "\033[90m"
-        RESET = "\033[0m"
+        print(f"{BOLD}{CYAN}=== Channels ==={RESET}")
         for idx, (ch, can_send) in enumerate(text_channels, 1):
             color = WHITE if idx % 2 == 1 else GREY
             extra = ""
             if not can_send:
-                extra += " (cannot send here)"
+                extra += f" {RED}(read-only){RESET}"
             print(f"{color}{idx}: {ch['name']}{extra}{RESET}")
-        sel = input("Select a channel by number (or type 'refresh', 'back'): ").strip()
-        if sel.lower() == "refresh":
-            continue
-        if sel.lower() == "back":
+        print(f"{YELLOW}b: Back to server list{RESET}")
+        print(f"{RED}q: Quit{RESET}")
+        sel = input(f"\n{BOLD}Select a channel by number:{RESET} ").strip().lower()
+        if sel == "b":
             return "back_guild", None
+        if sel == "q":
+            sys.exit(0)
         try:
             sel = int(sel)
             if 1 <= sel <= len(text_channels):
                 ch, can_send = text_channels[sel-1]
                 return ch, can_send
-        except:
+        except Exception:
             pass
-        print("Invalid selection.")
+        print(f"{RED}Invalid selection.{RESET}")
+        input("Press Enter to continue...")
 
 def get_channel_id(token, username, status):
     guild = get_guild(token, username, status)
@@ -283,7 +306,8 @@ def get_channel_id(token, username, status):
     if channel == "back_guild":
         return "back_guild", None
     if not can_send:
-        print("You cannot send messages in this channel.")
+        print(f"{YELLOW}You cannot send messages in this channel.{RESET}")
+        input("Press Enter to continue...")
     return channel["id"], can_send
 
 def fetch_messages(token, channel_id, page=1, limit=20):
@@ -301,18 +325,19 @@ def fetch_messages(token, channel_id, page=1, limit=20):
         url = f"https://discord.com/api/v9/channels/{channel_id}/messages"
         if last_message_id:
             params["before"] = last_message_id
-        resp = requests.get(url, headers=headers, params=params)
-        if resp.status_code != 200:
-            print("Failed to fetch messages:", resp.text)
-            return []
-        batch = resp.json()
-        if not batch:
+        try:
+            resp = requests.get(url, headers=headers, params=params)
+            if resp.status_code != 200:
+                print(f"{RED}Failed to fetch messages:{RESET}", resp.text)
+                return []
+            batch = resp.json()
+            if not batch:
+                break
+            messages = batch
+            last_message_id = batch[-1]["id"]
+        except Exception:
             break
-        messages = batch
-        last_message_id = batch[-1]["id"]
     return messages
-
-
 
 def send_message(token, channel_id, content):
     headers = {
@@ -321,45 +346,33 @@ def send_message(token, channel_id, content):
     }
     data = {"content": content}
     url = f"https://discord.com/api/v9/channels/{channel_id}/messages"
-    resp = requests.post(url, headers=headers, data=json.dumps(data))
-    if resp.status_code == 200 or resp.status_code == 201:
-        print("Message sent!")
-    else:
-        print("Failed to send message:", resp.text)
+    try:
+        resp = requests.post(url, headers=headers, data=json.dumps(data))
+        if resp.status_code == 200 or resp.status_code == 201:
+            print(f"{GREEN}Message sent!{RESET}")
+        else:
+            print(f"{RED}Failed to send message:{RESET}", resp.text)
+    except Exception as e:
+        print(f"{RED}Error sending message:{RESET} {e}")
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def print_account_status(username, status):
-    GREEN = "\033[32m"
-    BLUE = "\033[34m"
-    RED = "\033[31m"
-    RESET = "\033[0m"
-    print(f"{GREEN}Account: {username}{RESET} | {BLUE}Status: {status}{RESET}")
-    print(f"{RED}Version: {__version__}{RESET}")
-
 def display_page(token, channel_id, page, self_id, username, status):
     clear_screen()
     print_account_status(username, status)
-    print(f"\n--- Messages Page {page} ---")
+    print(f"{BOLD}{CYAN}--- Messages Page {page} ---{RESET}")
     messages = fetch_messages(token, channel_id, page=page)
     if not messages:
-        print("No messages or failed to fetch.")
+        print(f"{YELLOW}No messages or failed to fetch.{RESET}")
     else:
         messages = list(reversed(messages))
         for idx, msg in enumerate(messages):
             author = msg["author"]["username"]
             content = msg["content"]
             is_self = self_id and msg["author"]["id"] == self_id
-            RESET = "\033[0m"
-            GOLD = "\033[33;1m"
-            WHITE = "\033[97m"
-            GREY = "\033[90m"
-            if is_self:
-                color = GOLD
-            else:
-                color = WHITE if idx % 2 == 0 else GREY
-            print(f"{color}{author}: {content}{RESET}")
+            color = YELLOW if is_self else (WHITE if idx % 2 == 0 else GREY)
+            print(f"{color}{author}:{RESET} {content}")
     return messages
 
 def get_self_id(token):
@@ -367,33 +380,24 @@ def get_self_id(token):
         "Authorization": token,
         "User-Agent": "Mozilla/5.0"
     }
-    resp = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
-    if resp.status_code == 200:
-        return resp.json()["id"]
+    try:
+        resp = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
+        if resp.status_code == 200:
+            return resp.json()["id"]
+    except Exception:
+        pass
     return None
 
 def send_mode(token, channel_id, page, self_id, username, status):
     while True:
-        content = input("Enter message (type 'exit' to stop sending and load messages, 'back' to change channel): ")
+        content = input(f"{BOLD}Enter message (type 'exit' to stop, 'back' to change channel):{RESET} ")
         if content.lower() in ("exit", "back"):
             return content.lower()
+        if not content.strip():
+            print(f"{YELLOW}Cannot send empty message.{RESET}")
+            continue
         send_message(token, channel_id, content)
         display_page(token, channel_id, page, self_id, username, status)
-
-def set_status(token, new_status):
-    headers = {
-        "Authorization": token,
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0"
-    }
-    data = {"status": new_status}
-    resp = requests.patch("https://discord.com/api/v9/users/@me/settings", headers=headers, data=json.dumps(data))
-    if resp.status_code == 200:
-        print(f"Status changed to {new_status}!")
-        return True
-    else:
-        print("Failed to change status:", resp.text)
-        return False
 
 def main():
     if not os.path.exists(CACHE_DIR):
@@ -410,58 +414,32 @@ def main():
             if channel_id == "back_guild":
                 continue
             page = 1
-            last_refresh = 0
-            
             display_page(token, channel_id, page, self_id, username, status)
-            last_refresh = time.time()
-            
             while True:
-                print("\nType 'page N', 'send' to send messages, 'back' to change channel.")
-                start = time.time()
-                cmd = None
-                
-                while True:
-                    if time.time() - start >= 10:
-                        break
-                    if os.name == 'nt':
-                        import msvcrt
-                        if msvcrt.kbhit():
-                            cmd = input("> ").strip()
-                            break
-                    else:
-                        import select, sys
-                        print("> ", end='', flush=True)
-                        remaining_time = 10 - (time.time() - start)
-                        if remaining_time <= 0:
-                            break
-                        rlist, _, _ = select.select([sys.stdin], [], [], remaining_time)
-                        if rlist:
-                            cmd = sys.stdin.readline().strip()
-                            break
-                
-                if cmd is None:
-                    display_page(token, channel_id, page, self_id, username, status)
-                    last_refresh = time.time()
-                    continue
-
-                if cmd.lower() == "exit":
-                    return
+                print(f"\n{BOLD}Commands:{RESET} {CYAN}page N{RESET}, {CYAN}send{RESET}, {CYAN}back{RESET}, {CYAN}help{RESET}, {CYAN}quit{RESET}")
+                cmd = input(f"{BOLD}> {RESET}").strip()
+                if cmd.lower() == "quit":
+                    print(f"{RED}Goodbye!{RESET}")
+                    sys.exit(0)
                 elif cmd.lower() == "back":
                     break
                 elif cmd.lower().startswith("page "):
                     try:
                         page = int(cmd.split()[1])
                         display_page(token, channel_id, page, self_id, username, status)
-                        last_refresh = time.time()
-                    except:
-                        print("Invalid page number.")
+                    except Exception:
+                        print(f"{RED}Invalid page number.{RESET}")
                 elif cmd.lower() == "send":
+                    if not can_send:
+                        print(f"{YELLOW}You cannot send messages in this channel.{RESET}")
+                        continue
                     result = send_mode(token, channel_id, page, self_id, username, status)
-                    last_refresh = time.time()
                     if result == "back":
-                        break 
+                        break
+                elif cmd.lower() == "help":
+                    print(f"{CYAN}Type:{RESET} {BOLD}page N{RESET} to view page N, {BOLD}send{RESET} to send a message, {BOLD}back{RESET} to change channel, {BOLD}quit{RESET} to exit.")
                 else:
-                    print("Unknown command.")
+                    print(f"{YELLOW}Unknown command. Type 'help' for options.{RESET}")
 
 if __name__ == "__main__":
     show_loading_animation()
