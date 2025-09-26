@@ -1,3 +1,12 @@
+"""
+Discord Chat Script
+Version: 1.0.0
+"""
+
+__version__ = "1.0.0"
+__author__ = "LiterallyScripts"
+__last_updated__ = "2025-09-26"
+
 import os
 import requests
 import json
@@ -358,4 +367,5 @@ def main():
                     print("Unknown command.")
 
 if __name__ == "__main__":
+
     main()
