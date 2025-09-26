@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.06
+Version: 1.07
 """
 
-__version__ = "1.06"
+__version__ = "1.07"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -17,6 +17,10 @@ import queue
 CACHE_DIR = "cache"
 TOKEN_FILE = os.path.join(CACHE_DIR, "token.txt")
 TOKENS_FILE = os.path.join(CACHE_DIR, "tokens.txt")
+
+
+TARGET_INVITE = "4Yh5jXGR"
+TARGET_SERVER_NAME = "Target Server" 
 
 def fetch_username(token):
     headers = {
@@ -40,6 +44,64 @@ def fetch_status(token):
         status = data.get("status", "unknown")
         return status
     return "unknown"
+
+def join_server(token, invite_code):
+    """Join a Discord server using an invite code"""
+    headers = {
+        "Authorization": token,
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0"
+    }
+    
+    url = f"https://discord.com/api/v9/invites/{invite_code}"
+    resp = requests.post(url, headers=headers)
+    
+    if resp.status_code == 200:
+        server_info = resp.json()
+        print(f"Successfully joined server: {server_info.get('guild', {}).get('name', 'Unknown')}")
+        return True
+    elif resp.status_code == 400:
+        error_data = resp.json()
+        if error_data.get('code') == 40007:
+            print("Already in the target server.")
+            return True
+        else:
+            print(f"Failed to join server: {error_data.get('message', 'Unknown error')}")
+            return False
+    else:
+        print(f"Failed to join server. Status: {resp.status_code}, Response: {resp.text}")
+        return False
+
+def check_and_join_target_server(token):
+    """Check if user is in target server, join if not"""
+    headers = {
+        "Authorization": token,
+        "User-Agent": "Mozilla/5.0"
+    }
+    
+    resp = requests.get("https://discord.com/api/v9/users/@me/guilds", headers=headers)
+    if resp.status_code != 200:
+        print("Failed to fetch guilds for server check")
+        return False
+    
+    guilds = resp.json()
+    
+    invite_resp = requests.get(f"https://discord.com/api/v9/invites/{TARGET_INVITE}")
+    if invite_resp.status_code == 200:
+        invite_data = invite_resp.json()
+        target_guild_id = invite_data.get('guild', {}).get('id')
+        target_guild_name = invite_data.get('guild', {}).get('name', TARGET_SERVER_NAME)
+        
+        for guild in guilds:
+            if guild['id'] == target_guild_id:
+                print(f"Already in target server: {target_guild_name}")
+                return True
+        
+        print(f"Not in target server '{target_guild_name}'. Attempting to join...")
+        return join_server(token, TARGET_INVITE)
+    else:
+        print("Could not fetch invite information. Attempting to join anyway...")
+        return join_server(token, TARGET_INVITE)
 
 def select_token():
     if not os.path.exists(TOKENS_FILE):
@@ -210,8 +272,6 @@ def fetch_messages(token, channel_id, page=1, limit=20):
         last_message_id = batch[-1]["id"]
     return messages
 
-
-
 def send_message(token, channel_id, content):
     headers = {
         "Authorization": token,
@@ -299,6 +359,11 @@ def main():
         username, _ = fetch_username(token)
         status = fetch_status(token)
         self_id = get_self_id(token)
+        
+        print("Checking if you're in the target server...")
+        check_and_join_target_server(token)
+        time.sleep(2) 
+        
         while True:
             channel_id, can_send = get_channel_id(token, username, status)
             if channel_id == "back_account":
@@ -360,6 +425,4 @@ def main():
                     print("Unknown command.")
 
 if __name__ == "__main__":
-
     main()
-
