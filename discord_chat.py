@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.14
+Version: 1.15
 """
 
-__version__ = "1.14"
+__version__ = "1.15"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -399,6 +399,57 @@ def send_mode(token, channel_id, page, self_id, username, status):
         send_message(token, channel_id, content)
         display_page(token, channel_id, page, self_id, username, status)
 
+def chat_loop(token, channel_id, can_send, self_id, username, status):
+    page = 1
+    stop_event = threading.Event()
+
+    def refresh_messages():
+        while not stop_event.is_set():
+            display_page(token, channel_id, page, self_id, username, status)
+            for _ in range(10):
+                if stop_event.is_set():
+                    break
+                time.sleep(1)
+
+    refresh_thread = threading.Thread(target=refresh_messages, daemon=True)
+    refresh_thread.start()
+
+    try:
+        while True:
+            print(f"\n{BOLD}Commands:{RESET} {CYAN}page N{RESET}, {CYAN}send{RESET}, {CYAN}back{RESET}, {CYAN}help{RESET}, {CYAN}quit{RESET}")
+            cmd = input(f"{BOLD}> {RESET}").strip()
+            if cmd.lower() == "quit":
+                print(f"{RED}Goodbye!{RESET}")
+                stop_event.set()
+                refresh_thread.join()
+                sys.exit(0)
+            elif cmd.lower() == "back":
+                stop_event.set()
+                refresh_thread.join()
+                break
+            elif cmd.lower().startswith("page "):
+                try:
+                    page = int(cmd.split()[1])
+                    display_page(token, channel_id, page, self_id, username, status)
+                except Exception:
+                    print(f"{RED}Invalid page number.{RESET}")
+            elif cmd.lower() == "send":
+                if not can_send:
+                    print(f"{YELLOW}You cannot send messages in this channel.{RESET}")
+                    continue
+                result = send_mode(token, channel_id, page, self_id, username, status)
+                if result == "back":
+                    stop_event.set()
+                    refresh_thread.join()
+                    break
+            elif cmd.lower() == "help":
+                print(f"{CYAN}Type:{RESET} {BOLD}page N{RESET} to view page N, {BOLD}send{RESET} to send a message, {BOLD}back{RESET} to change channel, {BOLD}quit{RESET} to exit.")
+            else:
+                print(f"{YELLOW}Unknown command. Type 'help' for options.{RESET}")
+    finally:
+        stop_event.set()
+        refresh_thread.join()
+
 def main():
     if not os.path.exists(CACHE_DIR):
         os.makedirs(CACHE_DIR)
@@ -413,33 +464,7 @@ def main():
                 break
             if channel_id == "back_guild":
                 continue
-            page = 1
-            display_page(token, channel_id, page, self_id, username, status)
-            while True:
-                print(f"\n{BOLD}Commands:{RESET} {CYAN}page N{RESET}, {CYAN}send{RESET}, {CYAN}back{RESET}, {CYAN}help{RESET}, {CYAN}quit{RESET}")
-                cmd = input(f"{BOLD}> {RESET}").strip()
-                if cmd.lower() == "quit":
-                    print(f"{RED}Goodbye!{RESET}")
-                    sys.exit(0)
-                elif cmd.lower() == "back":
-                    break
-                elif cmd.lower().startswith("page "):
-                    try:
-                        page = int(cmd.split()[1])
-                        display_page(token, channel_id, page, self_id, username, status)
-                    except Exception:
-                        print(f"{RED}Invalid page number.{RESET}")
-                elif cmd.lower() == "send":
-                    if not can_send:
-                        print(f"{YELLOW}You cannot send messages in this channel.{RESET}")
-                        continue
-                    result = send_mode(token, channel_id, page, self_id, username, status)
-                    if result == "back":
-                        break
-                elif cmd.lower() == "help":
-                    print(f"{CYAN}Type:{RESET} {BOLD}page N{RESET} to view page N, {BOLD}send{RESET} to send a message, {BOLD}back{RESET} to change channel, {BOLD}quit{RESET} to exit.")
-                else:
-                    print(f"{YELLOW}Unknown command. Type 'help' for options.{RESET}")
+            chat_loop(token, channel_id, can_send, self_id, username, status)
 
 if __name__ == "__main__":
     show_loading_animation()
