@@ -1,9 +1,9 @@
 """
 Discord Chat Script
-Version: 1.08
+Version: 1.09
 """
 
-__version__ = "1.08"
+__version__ = "1.09"
 __author__ = "LiterallyScripts"
 __last_updated__ = "2025-09-26"
 
@@ -49,30 +49,63 @@ def join_server(token, invite_code):
     headers = {
         "Authorization": token,
         "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "X-Super-Properties": "eyJvcyI6IldpbmRvd3MiLCJicm93c2VyIjoiQ2hyb21lIiwiZGV2aWNlIjoiIiwic3lzdGVtX2xvY2FsZSI6ImVuLVVTIiwiYnJvd3Nlcl91c2VyX2FnZW50IjoiTW96aWxsYS81LjAgKFdpbmRvd3MgTlQgMTAuMDsgV2luNjQ7IHg2NCkgQXBwbGVXZWJLaXQvNTM3LjM2IiwiYnJvd3Nlcl92ZXJzaW9uIjoiMTIwLjAuMC4wIiwib3NfdmVyc2lvbiI6IjEwIiwicmVmZXJyZXIiOiIiLCJyZWZlcnJpbmdfZG9tYWluIjoiIiwicmVmZXJyZXJfY3VycmVudCI6IiIsInJlZmVycmluZ19kb21haW5fY3VycmVudCI6IiIsInJlbGVhc2VfY2hhbm5lbCI6InN0YWJsZSIsImNsaWVudF9idWlsZF9udW1iZXIiOjI3MjUxNCwiY2xpZW50X2V2ZW50X3NvdXJjZSI6bnVsbH0="
     }
     
-    data = {}
+    data = {
+        "session_id": None
+    }
     url = f"https://discord.com/api/v9/invites/{invite_code}"
-    resp = requests.post(url, headers=headers, data=json.dumps(data))
+    resp = requests.post(url, headers=headers, json=data)
+    
+    print(f"Debug: Status Code: {resp.status_code}")
+    print(f"Debug: Response: {resp.text}")
     
     if resp.status_code == 200:
-        server_info = resp.json()
-        print(f"Successfully joined server: {server_info.get('guild', {}).get('name', 'Unknown')}")
-        return True
+        try:
+            server_info = resp.json()
+            print(f"Successfully joined server: {server_info.get('guild', {}).get('name', 'Unknown')}")
+            return True
+        except:
+            print("Joined server but couldn't parse response")
+            return True
     elif resp.status_code == 400:
-   
         try:
             error_data = resp.json()
-            if error_data.get('code') == 40007: 
+            error_code = error_data.get('code', 0)
+            error_message = error_data.get('message', 'Unknown error')
+            
+            print(f"Debug: Error code: {error_code}")
+            print(f"Debug: Error message: {error_message}")
+            
+            if error_code == 40007:  
                 print("Already in the target server.")
                 return True
+            elif error_code == 50013:  
+                print("Cannot join server: Missing permissions or server is invite-only")
+                return False
+            elif error_code == 10006: 
+                print("Invalid invite code - the invite may have expired")
+                return False
             else:
-                print(f"Failed to join server: {error_data.get('message', 'Unknown error')}")
+                print(f"Failed to join server: {error_message} (Code: {error_code})")
                 return False
         except:
-            print(f"Failed to join server. Status: 400, Response: {resp.text}")
+            print(f"Failed to join server. Status: 400, Raw response: {resp.text}")
             return False
+    elif resp.status_code == 401:
+        print("Authentication failed - invalid token")
+        return False
+    elif resp.status_code == 403:
+        print("Forbidden - you may be banned from this server")
+        return False
+    elif resp.status_code == 404:
+        print("Invite not found - the invite may have expired")
+        return False
+    elif resp.status_code == 429:
+        print("Rate limited - please wait and try again later")
+        return False
     else:
         print(f"Failed to join server. Status: {resp.status_code}, Response: {resp.text}")
         return False
@@ -84,7 +117,7 @@ def check_and_join_target_server(token):
         "User-Agent": "Mozilla/5.0"
     }
     
-  
+
     resp = requests.get("https://discord.com/api/v9/users/@me/guilds", headers=headers)
     if resp.status_code != 200:
         print("Failed to fetch guilds for server check")
@@ -92,19 +125,20 @@ def check_and_join_target_server(token):
     
     guilds = resp.json()
     
+
     invite_resp = requests.get(f"https://discord.com/api/v9/invites/{TARGET_INVITE}")
     if invite_resp.status_code == 200:
         invite_data = invite_resp.json()
         target_guild_id = invite_data.get('guild', {}).get('id')
         target_guild_name = invite_data.get('guild', {}).get('name', TARGET_SERVER_NAME)
         
-    
+
         for guild in guilds:
             if guild['id'] == target_guild_id:
                 print(f"Already in target server: {target_guild_name}")
                 return True
         
- 
+
         print(f"Not in target server '{target_guild_name}'. Attempting to join...")
         return join_server(token, TARGET_INVITE)
     else:
