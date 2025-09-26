@@ -11,3 +11,7 @@ minimal version of discord.
 - Multiple accounts (add an infinite number of accounts using your discord tokens)
 - Channel and catagory viewer (shows everything but vc channels)
 - Messaging in servers (not in dms currently)
+
+# HOW TO INSTALL
+Download the start.bat file and run it in a folder, 
+it will do the rest itself!
